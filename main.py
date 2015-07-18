@@ -10,6 +10,7 @@ import random
 import textwrap
 from collections import OrderedDict, Counter
 import src.world.area as world
+import src.items as itt
 import libtcodpy as lt
 
 
@@ -145,13 +146,7 @@ class Chest(Part):
         self.name = "chest"
 
 
-class Item():
-    def __init__(self, name, weight):
-        self.name, self.names = name
-        self.weight = weight
-
-
-class Inventory():
+class Inventory:
     def __init__(self, owner):
         self.owner = owner
         self.holding_slots = OrderedDict()
@@ -193,7 +188,7 @@ Player
 """
 
 
-class PlayerControl():
+class PlayerControl:
     def take_turn(self):
         action = None
         control_map = {
@@ -686,7 +681,7 @@ def new_game():
         if not is_blocked(col, row):
             item = {
                 'loc': world.Location(col, row, '%', lt.light_gray),
-                'item': Item(['bone', 'bones'], 0.5)
+                'item': itt.Item(['bone', 'bones'], 0.5)
             }
             items.append(item)
     for n in xrange(40):
@@ -695,7 +690,7 @@ def new_game():
         if not is_blocked(col, row):
             item = {
                 'loc': world.Location(col, row, 'O', lt.desaturated_amber),
-                'item': Item(['large rock', 'large rocks'], 2)
+                'item': itt.Item(['large rock', 'large rocks'], 2)
             }
             items.append(item)
 
