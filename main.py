@@ -1,8 +1,6 @@
 """
 Title: Drake
 Author: A. Parish
-Version: 0.0.1
-Last Updated: 07/07/2015
 
 With a lot of help from Jotaf's tutorial, of course. :)
 """
@@ -10,7 +8,6 @@ import random
 import textwrap
 from collections import OrderedDict, Counter
 import src.world.area as world
-import src.items as itt
 import libtcodpy as lt
 
 
@@ -258,7 +255,7 @@ class PlayerControl:
         if player["inv"].holding_slots[choice] is not None:
             item_name = player["inv"].holding_slots[choice]["item"].name
             message("You drop the " + item_name + ".", lt.yellow)
-            player["inv"].drop(choice, items)
+            player["inv"].drop(choice, area.items)
             return "took turn"
         else:
             message("You're not holding anything with that.", lt.yellow)
@@ -272,14 +269,14 @@ class PlayerControl:
         elif len(indexes) > 0:
             n = 0
             if len(indexes) > 1:
-                options = [items[x]["item"].name.capitalize() for x in indexes]
+                options = [area.items[x]["item"].name.capitalize() for x in indexes]
                 n = menu('Pick what up', options, 40)
-            item = items[indexes[n]]
+            item = area.items[indexes[n]]
             held = player["inv"].pick_up(item)
             if held != '':
                 # Picked it up with an empty hamd/mouth.
                 message("You pick up the " + item["item"].name + " with your " + held + ".", lt.yellow)
-                items.pop(indexes[n])
+                area.items.pop(indexes[n])
                 return "took turn"
 
             else:
@@ -297,11 +294,11 @@ class PlayerControl:
                     return "no turn"
                 else:
                     choice = part_list[key]
-                player["inv"].drop(choice, items)
+                player["inv"].drop(choice, area.items)
 
                 # Need to repeat the ["inv"].pick_up() call, because the first must have failed:
                 player["inv"].pick_up(item)
-                items.pop(indexes[n])
+                area.items.pop(indexes[n])
                 message("You drop the " + item["item"].name + " and pick up the " + item["item"].name, lt.yellow)
 
 
@@ -423,7 +420,7 @@ def initialize_player():
     # Place player.
     print "Placing player..."
     flatten = []
-    for section in area:
+    for section in area.area:
         for tile in section:
             flatten.append(tile)
     flatten.sort(key=lambda x: x.distance, reverse=True)
@@ -466,7 +463,7 @@ def menu(header, options, width):
     elif len(options) == 0:
         raise ValueError('Attempted menu with no options.')
 
-    header_height = lt.console_get_height_rect(area_con, 0, 0, width, MAP_HEIGHT, header)
+    header_height = lt.console_get_height_rect(area.con, 0, 0, width, MAP_HEIGHT, header)
     if header == '':
         header_height = 0
     height = len(options) + header_height
@@ -502,7 +499,7 @@ Map Functions
 
 
 def is_blocked(col, row):
-    return area[col][row].blocks_movement
+    return area.area[col][row].blocks_movement
 
 
 def is_clear_area(col, row, col_size, row_size):
@@ -518,7 +515,7 @@ def examine_tile_contents(col, row):
     contents = []
     text = "There is something wrong with the items on the ground here."
     for content in adjacent_items(col, row):
-        contents.append(items[content]["item"])
+        contents.append(area.items[content]["item"])
     if len(contents) == 1:
         if contents[0].name[0] in ('a', 'e', 'i', 'o', 'u'):
             item_text = 'an ' + contents[0].name
@@ -566,7 +563,7 @@ def adjacent_items(col, row):
         # returns a list of ints, referring to the index(es) of global list item(s) that share the same location
         adjacent = []
         n = 0       # Counts the index
-        for item in items:
+        for item in area.items:
             if item["loc"].row == row and item["loc"].col == col:
                 adjacent.append(n)
             n += 1
@@ -582,13 +579,12 @@ def render_all():
     offset_row = player["loc"].row - (MAP_WIDTH/2)
     offset_col = player["loc"].col - (MAP_HEIGHT/2)
 
-    global area_con
-    lt.map_compute_fov(fov_map, player["loc"].col, player["loc"].row, SIGHT_RADIUS, True, FOV_ALGO)
-    area_con, fog = world.render_area(fov_map, offset_col, offset_row, MAP_WIDTH, MAP_HEIGHT)
-    for item in items:
-        item["loc"].draw()
-    player["loc"].draw()
-    lt.console_set_key_color(area_con, lt.black)
+    lt.map_compute_fov(area.fov_map, player["loc"].col, player["loc"].row, SIGHT_RADIUS, True, FOV_ALGO)
+    area.draw(offset_col, offset_row, MAP_WIDTH, MAP_HEIGHT)
+    for item in area.items:
+        item["loc"].draw(area)
+    player["loc"].draw(area)
+    lt.console_set_key_color(area.con, lt.black)
 
     # Panel Rendering
     lt.console_clear(panel)
@@ -611,7 +607,7 @@ def render_all():
     lt.console_print(panel, 1, 9, text)
 
     # Fog background behind the map.
-    lt.console_set_default_background(frame, fog)
+    lt.console_set_default_background(frame, area.fog)
     lt.console_rect(frame, 1, 1, MAP_WIDTH, MAP_HEIGHT, True, lt.BKGND_SET)
     # A frame around the map
     lt.console_set_default_foreground(frame, lt.desaturated_amber)
@@ -625,7 +621,7 @@ def render_all():
     # Blit all
     lt.console_blit(frame, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
     lt.console_blit(panel, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, MAP_WIDTH + 2, 1)
-    lt.console_blit(area_con, offset_row, offset_col, MAP_WIDTH, MAP_HEIGHT, 0, 1, 1)
+    lt.console_blit(area.con, offset_row, offset_col, MAP_WIDTH, MAP_HEIGHT, 0, 1, 1)
     lt.console_flush()
 
 
@@ -669,30 +665,9 @@ def new_game():
     log = lt.console_new(SCREEN_WIDTH - PANEL_WIDTH + 2, LOG_HEIGHT)
     frame = lt.console_new(MAP_WIDTH + 2, MAP_HEIGHT + 2)
 
-    global area, area_con, structures, items, fov_map
     # Starting cave
-    area, area_con, structures, fov_map = world.new_area("cave", 50, 100)
-    items = []
-
-    # FIXME
-    for n in xrange(25):
-        col = random.randint(0, 99)
-        row = random.randint(0, 49)
-        if not is_blocked(col, row):
-            item = {
-                'loc': world.Location(col, row, '%', lt.light_gray),
-                'item': itt.Item(['bone', 'bones'], 0.5)
-            }
-            items.append(item)
-    for n in xrange(40):
-        col = random.randint(0, 99)
-        row = random.randint(0, 49)
-        if not is_blocked(col, row):
-            item = {
-                'loc': world.Location(col, row, 'O', lt.desaturated_amber),
-                'item': itt.Item(['large rock', 'large rocks'], 2)
-            }
-            items.append(item)
+    global area
+    area = world.Area("cave", 50, 100)
 
     global game_msgs
     game_msgs = []
@@ -717,7 +692,7 @@ def main():
 
         player_action = player["ai"].take_turn()
         if player_action == "exit":
-            for console in [area_con, frame, panel, log]:
+            for console in [area.con, frame, panel, log]:
                 lt.console_delete(console)
             lt.console_clear(0)
             lt.console_flush()

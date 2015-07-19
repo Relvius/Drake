@@ -1,3 +1,9 @@
+"""
+Deals with the procedural generation of indiivudal areas.
+"""
+"""
+"""
+
 import libtcodpy as lt
 import random
 
@@ -38,9 +44,9 @@ def make_area(area, biome, exits):
     while not terrain:
         ######################## Caves
         if biome == "cave":
-            p_blocked = .45
+            p_blocked = .4
             p_unblocked = .4
-            nudge = 0.07
+            nudge = 0.065
             steps = 10
             border = True
             connect = True
