@@ -1,11 +1,13 @@
 """
-Puts together a lot of the information about area generation. Essentially "packages up" the raw data from gen.py.
+Sets up the areas and makes sure they're all in order. Sort of the middle layer between world_gen and area_gen.
 """
 
+WORLD_SEED = 127
+
 import libtcodpy as lt
-from src.world import gen
-import src.items as itt
+from src.world import area_gen
 import random
+from src import items as itt
 
 """
 Entities
@@ -87,7 +89,7 @@ class Area:
     def __init__(self, biome, height, width):
         self.con = lt.console_new(width, height)
         self.area = [[Tile(col, row, ' ') for row in xrange(width)] for col in xrange(height)]
-        self.area, self.fov_map = gen.make_area(self.area, biome, 1)
+        self.area, self.fov_map = area_gen.make_area(self.area, biome, 1)
 
         biomes = {
             "cave": {
