@@ -7,9 +7,10 @@ With a lot of help from Jotaf's tutorial, of course. :)
 import random
 import textwrap
 from collections import OrderedDict, Counter
+
+import src.creatures as ccreate
 import src.world.area as world
 import libtcodpy as lt
-
 
 """
 Global Parameters
@@ -54,101 +55,12 @@ class Mobile(world.Location):
         self.move(dx, dy)
 
 
-class Body:
-    def __init__(self, name):
-        self.name, self.names = name
-        self.parts = []
-        self.head = None
-        self.chest = None
-
-    def add_limb(self, kind, hp, str, dex, loc):
-        self.parts.append(Limb(kind, hp, str, dex, loc))
-
-    def add_head(self, hp, str, dex, int, per):
-        self.head = Head(hp, str, dex, int, per)
-        self.parts.append(self.head)
-
-    def add_chest(self, hp, str, dex, end):
-        self.chest = Chest(hp, str, dex, end)
-        self.parts.append(self.chest)
-
-    def overall_health(self):
-        hp = 0
-        for part in self.parts:
-            hp += (part.hp / part.max_hp) * 100
-        hp /= len(self.parts)
-        return hp
-
-
-class Part(object):
-    def __init__(self, hp, str, dex):
-        self.hp = hp
-        self.max_hp = hp
-        self.str = str
-        self.dex = dex
-        self.name = "you shouldn't see this"
-        self.holds = False
-
-    def health(self):
-        return (float(self.hp) / self.max_hp) * 100
-
-    def injure(self, amount):
-        self.hp -= amount
-        return
-
-
-class Limb(Part):
-    def __init__(self, kind, hp, str, dex, loc):
-        """
-        kind = "leg", "arm", "legarm", "tail", or "wing"
-        loc = standard: left/right
-        """
-        super(Limb, self).__init__(hp, str, dex)
-        self.loc = loc
-        self.is_leg = False
-        self.is_arm = False
-        self.is_wing = False
-
-        # Component system stuff?
-        if kind == "leg":
-            self.is_leg = True
-        elif kind == "wing":
-            self.is_wing = True
-        elif kind == "arm":
-            self.is_arm = True
-        elif kind == "legarm":
-            self.is_arm = True
-            self.is_leg = True
-            kind = "arm"
-        if self.is_arm:
-            self.holds = True
-
-        self.name = loc + " " + kind
-
-    # TODO: lots of limb shit
-
-
-class Head(Part):
-    def __init__(self, hp, str, dex, int, per):
-        super(Head, self).__init__(hp, str, dex)
-        self.int = int
-        self.per = per
-        self.name = "head"
-
-
-class Chest(Part):
-    def __init__(self, hp, str, dex, end):
-        super(Chest, self).__init__(hp, str, dex)
-        self.end = end
-        self.name = "chest"
-
-
 class Inventory:
     def __init__(self, owner):
         self.owner = owner
         self.holding_slots = OrderedDict()
         self.equipment_slots = OrderedDict()
-        for part in self.owner["body"].parts:
+        for part in self.owner.body.parts:
             self.equipment_slots[part.name] = None
             if part.holds:
                 if part.name == "left arm":
@@ -172,8 +84,8 @@ class Inventory:
         return to_hold
 
     def drop(self, part, items):
-        col = self.owner["loc"].col
-        row = self.owner["loc"].row
+        col = self.owner.loc.col
+        row = self.owner.loc.row
         self.holding_slots[part]["loc"].col = col
         self.holding_slots[part]["loc"].row = row
         items.append(self.holding_slots[part])
@@ -223,24 +135,24 @@ class PlayerControl:
 
     def move(self, coords):
         dx, dy = coords
-        target_row = player["loc"].row + dx
-        target_col = player["loc"].col + dy
+        target_row = player.loc.row + dx
+        target_col = player.loc.col + dy
 
         if is_blocked(target_col, target_row):
             message("Bump.")
             return "no turn"
         else:
-            player["loc"].move(dx, dy)
+            player.loc.move(dx, dy)
             if dx != 0 or dy != 0:
-                adjacent = adjacent_items(player["loc"].col, player["loc"].row)
+                adjacent = adjacent_items(player.loc.col, player.loc.row)
                 if len(adjacent) > 0:
-                    message(examine_tile_contents(player["loc"].col, player["loc"].row))
+                    message(examine_tile_contents(player.loc.col, player.loc.row))
             return "took turn"
 
     def drop(self):
         options = []
         part_list = []
-        for key, value in player["inv"].holding_slots.iteritems():
+        for key, value in player.inv.holding_slots.iteritems():
             item_name = 'Nothing'
             if value:
                 item_name = value["item"].name.capitalize()
@@ -252,17 +164,17 @@ class PlayerControl:
             return "no turn"
         else:
             choice = part_list[key]
-        if player["inv"].holding_slots[choice] is not None:
-            item_name = player["inv"].holding_slots[choice]["item"].name
+        if player.inv.holding_slots[choice] is not None:
+            item_name = player.inv.holding_slots[choice]["item"].name
             message("You drop the " + item_name + ".", lt.yellow)
-            player["inv"].drop(choice, area.items)
+            player.inv.drop(choice, area.items)
             return "took turn"
         else:
             message("You're not holding anything with that.", lt.yellow)
             return "no turn"
 
     def pickup(self):
-        indexes = adjacent_items(player["loc"].col, player["loc"].row)
+        indexes = adjacent_items(player.loc.col, player.loc.row)
         if len(indexes) == 0:
             message("You don't see anything around you.")
             return "no turn"
@@ -272,7 +184,7 @@ class PlayerControl:
                 options = [area.items[x]["item"].name.capitalize() for x in indexes]
                 n = menu('Pick what up', options, 40)
             item = area.items[indexes[n]]
-            held = player["inv"].pick_up(item)
+            held = player.inv.pick_up(item)
             if held != '':
                 # Picked it up with an empty hamd/mouth.
                 message("You pick up the " + item["item"].name + " with your " + held + ".", lt.yellow)
@@ -284,7 +196,7 @@ class PlayerControl:
                 part_list = []
                 options = []
                 # Presents a modified version of the self.drop menu.
-                for key, value in player["inv"].holding_slots.iteritems():
+                for key, value in player.inv.holding_slots.iteritems():
                     item_name = value["item"].name.capitalize()
                     part_list.append(key)
                     text = item_name + '   {' + key + '}'
@@ -294,10 +206,10 @@ class PlayerControl:
                     return "no turn"
                 else:
                     choice = part_list[key]
-                player["inv"].drop(choice, area.items)
+                player.inv.drop(choice, area.items)
 
                 # Need to repeat the ["inv"].pick_up() call, because the first must have failed:
-                player["inv"].pick_up(item)
+                player.inv.pick_up(item)
                 area.items.pop(indexes[n])
                 message("You drop the " + item["item"].name + " and pick up the " + item["item"].name, lt.yellow)
 
@@ -347,7 +259,7 @@ def render_inventory():
     lt.console_print_ex(window, w/2, divide, lt.BKGND_NONE, lt.CENTER, "Equipment")
     for part in ["left hand", "right hand", "mouth"]:
         text = "Nothing"
-        held_item = player["inv"].holding_slots[part]
+        held_item = player.inv.holding_slots[part]
         if held_item:
             text = held_item["item"].name.capitalize()
         if part == "left hand":
@@ -360,7 +272,7 @@ def render_inventory():
     # Then the equipped items.
     for part in ["head", "chest", " tail", "left arm", "left wing", "left leg", "right arm", "right wing", "right leg"]:
         text = "Nothing"
-        equipped_item = player["inv"].equipment_slots[part]
+        equipped_item = player.inv.equipment_slots[part]
         if equipped_item:
             text = equipped_item["item"].name.capitalize()
         if part == "head":
@@ -394,39 +306,6 @@ def render_inventory():
             render_all()
             return "no turn"
 
-
-def initialize_player():
-    global player, fov_recompute
-    fov_recompute = True
-    player = dict()
-    player["ai"] = PlayerControl()
-
-    # Set up body and parts.
-    player["body"] = Body(['dragon', 'dragons'])
-    player["body"].add_limb("legarm", 5, 5, 5, 'right')
-    player["body"].add_limb("legarm", 5, 5, 5, 'left')
-    player["body"].add_limb("wing", 5, 5, 5, 'right')
-    player["body"].add_limb("wing", 5, 5, 5, 'left')
-    player["body"].add_limb("leg", 5, 5, 5, 'right')
-    player["body"].add_limb("leg", 5, 5, 5, 'left')
-    player["body"].add_limb("tail", 5, 5, 5, '')
-    player["body"].add_head(10, 5, 5, 5, 5)
-    player["body"].add_chest(10, 5, 5, 5)
-    player["body"].head.holds = True  # Dragons can hold things with their mouths. :>
-
-    player["inv"] = Inventory(player)
-
-    # Place player.
-    print "Placing player..."
-    flatten = []
-    for section in area.area:
-        for tile in section:
-            flatten.append(tile)
-    flatten.sort(key=lambda x: x.distance, reverse=True)
-    starting = random_choice_list(flatten[:25])
-    player['loc'] = Mobile(starting.col, starting.row, '@', lt.white)
-
-    return player
 
 """
 General Functions
@@ -575,33 +454,33 @@ Rendering
 
 
 def render_all():
-    offset_row = player["loc"].row - (MAP_WIDTH/2)
-    offset_col = player["loc"].col - (MAP_HEIGHT/2)
+    offset_row = player.loc.row - (MAP_WIDTH/2)
+    offset_col = player.loc.col - (MAP_HEIGHT/2)
 
-    lt.map_compute_fov(area.fov_map, player["loc"].col, player["loc"].row, SIGHT_RADIUS, True, FOV_ALGO)
+    lt.map_compute_fov(area.fov_map, player.loc.col, player.loc.row, SIGHT_RADIUS, True, FOV_ALGO)
     area.draw(offset_col, offset_row, MAP_WIDTH, MAP_HEIGHT)
     for item in area.items:
         item["loc"].draw(area)
-    player["loc"].draw(area)
+    player.loc.draw(area)
     lt.console_set_key_color(area.con, lt.black)
 
     # Panel Rendering
     lt.console_clear(panel)
     lt.console_set_default_foreground(panel, lt.white)
     lt.console_print(panel, 1, 2, 'Overall:')
-    text, color = injury_level(player["body"].overall_health())
+    text, color = injury_level(player.body.overall_health())
     lt.console_set_default_foreground(panel, color)
     lt.console_print(panel, 1, 3, text)
 
     lt.console_set_default_foreground(panel, lt.white)
     lt.console_print(panel, 1, 5, 'Chest:')
-    text, color = injury_level(player["body"].chest.health())
+    text, color = injury_level(player.body.chest.health())
     lt.console_set_default_foreground(panel, color)
     lt.console_print(panel, 1, 6, text)
 
     lt.console_set_default_foreground(panel, lt.white)
     lt.console_print(panel, 1, 8, 'Head:')
-    text, color = injury_level(player["body"].head.health())
+    text, color = injury_level(player.body.head.health())
     lt.console_set_default_foreground(panel, color)
     lt.console_print(panel, 1, 9, text)
 
@@ -672,8 +551,12 @@ def new_game():
     game_msgs = []
     message(' ')  # Ensures log is rendered.
 
+    # Create player entity
     global player
-    player = initialize_player()
+    player = ccreate.create_player(area.area)
+    player.loc = Mobile(player.loc.col, player.loc.row, player.loc.char, player.loc.f_color)
+    player.ai = PlayerControl()
+    player.inv = Inventory(player)
 
     global gamestate
     gamestate = "main"
@@ -689,7 +572,7 @@ def main():
     while True:
         render_all()
 
-        player_action = player["ai"].take_turn()
+        player_action = player.ai.take_turn()
         if player_action == "exit":
             for console in [area.con, frame, panel, log]:
                 lt.console_delete(console)
