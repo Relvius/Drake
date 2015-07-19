@@ -88,12 +88,21 @@ class Area:
         self.con = lt.console_new(width, height)
         self.area = [[Tile(col, row, ' ') for row in xrange(width)] for col in xrange(height)]
         self.area, self.fov_map = gen.make_area(self.area, biome, 1)
-        
-        if biome == "cave":
-            self.fog = lt.Color(20, 10, 15)
-            self.fog_density = 0.55
-            self.items = default_cave_items(self.area)
-            self.structures = []
+
+        biomes = {
+            "cave": {
+                "fog": lt.Color(20, 10, 15),
+                "fog density": 0.4,    # Lower is more dense
+                "items": default_cave_items,
+                "structures": []
+            },
+        }
+
+        biome = biomes[biome]
+        self.fog = biome["fog"]
+        self.fog_density = biome["fog density"]
+        self.items = biome["items"](self.area)
+        self.structures = biome["structures"]
 
     def draw(self, offset_col, offset_row, map_width, map_height):
         lt.console_clear(self.con)

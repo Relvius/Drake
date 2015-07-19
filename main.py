@@ -301,7 +301,6 @@ class PlayerControl:
                 area.items.pop(indexes[n])
                 message("You drop the " + item["item"].name + " and pick up the " + item["item"].name, lt.yellow)
 
-
                 return "took turn"
 
     def leave_game(self):
