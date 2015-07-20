@@ -12,21 +12,21 @@ Parameters for stand-alone generation
 """
 
 viz = False
+"""
 
 WIDTH = 100
 HEIGHT = 100
 biome = "cave"
-exits = 0
+EXITS = 0
 
-seed = 1580349
-
+WORLD_SEED = 127
+"""
 """
 Setup
 """
 
 
-def make_area(area, biome, exits):
-    random.seed(seed)
+def make_area(area, biome, exits, seed):
     height = len(area)
     width = len(area[0])
     terrain = False
@@ -44,22 +44,29 @@ def make_area(area, biome, exits):
     while not terrain:
         ######################## Caves
         if biome == "cave":
-            p_blocked = .4
-            p_unblocked = .4
-            nudge = 0.065
-            steps = 10
-            border = True
-            connect = True
-            terrain = area_cell_create(width, height, p_blocked, p_unblocked, nudge, steps, border, exits, connect)
+            terrain = area_cell_create(
+                width, height,
+                p_blocked=.45,
+                p_unblocked=.4,
+                nudge=0.07,
+                steps=10,
+                border=True,
+                connect=True,
+                seed=seed
+            )
+
         ######################## Forests
         elif biome == "sparse forest":
-            p_blocked = .03
-            p_unblocked = .7
-            nudge = -0.04
-            steps = 1
-            border = False
-            connect = False
-            terrain = area_cell_create(width, height, p_blocked, p_unblocked, nudge, steps, border, exits, connect)
+            terrain = area_cell_create(
+                width, height,
+                p_blocked=.03,
+                p_unblocked=.7,
+                nudge=-0.04,
+                steps=1,
+                border=False,
+                connect=False,
+                seed=seed
+            )
 
     if viz:
         return
@@ -141,7 +148,7 @@ Cellular Automata Generation
 """
 
 
-def area_cell_create(width, height, p_blocked, p_unblocked, nudge, steps, border=True, exits=0, connect=True):
+def area_cell_create(width, height, p_blocked, p_unblocked, nudge, steps, border=True, exits=0, connect=True, seed=lt.random_get_instance()):
     """
     :param width:
     :param height:
@@ -157,7 +164,7 @@ def area_cell_create(width, height, p_blocked, p_unblocked, nudge, steps, border
     area = [[True for row in xrange(width)] for col in xrange(height)]
     # Create noise
     print "Generating noise..."
-    area_noise = lt.noise_new(2)
+    area_noise = lt.noise_new(2, random=seed)
     for col in xrange(height):
         for row in xrange(width):
             if border:
@@ -283,21 +290,20 @@ def reachable(col, row, area, n):
 
 
 def visualize(area):
-    global viz
     if viz:
         lt.console_clear(con)
-        y = -1
+        y = 0
         for row in area:
-            y += 1
-            x = -1
+            x = 0
             for tile in row:
-                x += 1
                 if tile == 1:
                     lt.console_set_char_background(con, x, y, lt.white)
                 elif tile == -1:
                     lt.console_set_char_background(con, x, y, lt.green)
                 elif tile > 1:
                     lt.console_set_char_background(con, x, y, lt.Color(tile, tile, 225))
+                x += 1
+            y += 1
         lt.console_blit(con, 0, 0, 0, 0, 0, 0, 0)
         lt.console_flush()
 
@@ -312,4 +318,4 @@ if viz:
         if key.vk == lt.KEY_ESCAPE:
             quit()
         else:
-            make_area(area, biome, exits)
+            make_area(area, biome, exits, WORLD_SEED)

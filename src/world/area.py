@@ -89,7 +89,8 @@ class Area:
     def __init__(self, biome, height, width):
         self.con = lt.console_new(width, height)
         self.area = [[Tile(col, row, ' ') for row in xrange(width)] for col in xrange(height)]
-        self.area, self.fov_map = area_gen.make_area(self.area, biome, 1)
+        self.random = lt.random_new_from_seed(WORLD_SEED)
+        self.area, self.fov_map = area_gen.make_area(self.area, biome, 1, self.random)
 
         biomes = {
             "cave": {
