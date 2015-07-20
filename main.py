@@ -7,10 +7,11 @@ With a lot of help from Jotaf's tutorial, of course. :)
 import random
 import textwrap
 from collections import OrderedDict, Counter
+import libtcodpy as lt
 
 import src.creatures as ccreate
+import src.menus as menus
 import src.world.area as world
-import libtcodpy as lt
 
 """
 Global Parameters
@@ -114,7 +115,7 @@ class PlayerControl:
             lt.KEY_KP3: (self.move, (1, 1)),
 
             # Item Keys
-            ord('i'): (render_inventory, None),
+            ord('i'): (menus.render_inventory, (player, area.con)),
             ord('g'): (self.pickup, None),
             ord('d'): (self.drop, None)
         }
@@ -159,7 +160,7 @@ class PlayerControl:
             part_list.append(key)
             text = item_name + '   {' + key + '}'
             options.append(text)
-        key = menu('Drop what?', options, 40)
+        key = menus.menu('Drop what?', options, 40, area.con, MAP_WIDTH, MAP_HEIGHT)
         if key == 'exit':
             return "no turn"
         else:
@@ -182,7 +183,9 @@ class PlayerControl:
             n = 0
             if len(indexes) > 1:
                 options = [area.items[x]["item"].name.capitalize() for x in indexes]
-                n = menu('Pick what up', options, 40)
+                n = menus.menu('Pick what up?', options, 40, area.con, MAP_WIDTH, MAP_HEIGHT)
+            if n == "exit":
+                return "no turn"
             item = area.items[indexes[n]]
             held = player.inv.pick_up(item)
             if held != '':
@@ -201,7 +204,7 @@ class PlayerControl:
                     part_list.append(key)
                     text = item_name + '   {' + key + '}'
                     options.append(text)
-                key = menu('You struggle to hold so much. What do you want to drop?', options, MENU_WIDTH)
+                key = menus.menu("You can't grab anything else! What do you want to drop?", options, MENU_WIDTH, area.con, MAP_WIDTH, MAP_HEIGHT)
                 if key == 'exit':
                     return "no turn"
                 else:
@@ -231,82 +234,6 @@ class PlayerControl:
                 return "no turn"
 
 
-def render_inventory():
-    w = 50
-    h = 40
-    divide = 11
-    window = lt.console_new(w, h)
-
-    # Lots of shit getting text into the right position.
-    # First the labels...
-    lt.console_set_default_foreground(window, lt.light_yellow)
-    lt.console_print(window, 1, 4, "Left Hand:")
-    lt.console_print_ex(window, w-2, 4, lt.BKGND_NONE, lt.RIGHT, "Right Hand:")
-    lt.console_print_ex(window, w/2, 4, lt.BKGND_NONE, lt.CENTER, "Mouth:")
-    lt.console_print_ex(window, w/2, divide+3, lt.BKGND_NONE, lt.CENTER, "Head:")
-    lt.console_print(window, 1, divide+6, "Left Arm:")
-    lt.console_print_ex(window, w-2, divide+6, lt.BKGND_NONE, lt.RIGHT, "Right Arm:")
-    lt.console_print_ex(window, w/2, divide+8, lt.BKGND_NONE, lt.CENTER, "Chest:")
-    lt.console_print(window, 1, divide+10, "Left Wing:")
-    lt.console_print_ex(window, w-2, divide+10, lt.BKGND_NONE, lt.RIGHT, "Right Wing:")
-    lt.console_print(window, 1, divide+14, "Left Leg:")
-    lt.console_print_ex(window, w-2, divide+14, lt.BKGND_NONE, lt.RIGHT, "Right Leg:")
-    lt.console_print_ex(window, w/2, divide+16, lt.BKGND_NONE, lt.CENTER, "Tail:")
-
-    # Then the held items.
-    lt.console_set_default_foreground(window, lt.white)
-    lt.console_print_ex(window, w/2, 1, lt.BKGND_NONE, lt.CENTER, "Held Items")
-    lt.console_print_ex(window, w/2, divide, lt.BKGND_NONE, lt.CENTER, "Equipment")
-    for part in ["left hand", "right hand", "mouth"]:
-        text = "Nothing"
-        held_item = player.inv.holding_slots[part]
-        if held_item:
-            text = held_item["item"].name.capitalize()
-        if part == "left hand":
-            lt.console_print(window, 4, 5, text)
-        elif part == "right hand":
-            lt.console_print_ex(window, w-5, 5, lt.BKGND_NONE, lt.RIGHT, text)
-        elif part == "mouth":
-            lt.console_print_ex(window, w/2, 5, lt.BKGND_NONE, lt.CENTER, text)
-
-    # Then the equipped items.
-    for part in ["head", "chest", " tail", "left arm", "left wing", "left leg", "right arm", "right wing", "right leg"]:
-        text = "Nothing"
-        equipped_item = player.inv.equipment_slots[part]
-        if equipped_item:
-            text = equipped_item["item"].name.capitalize()
-        if part == "head":
-            lt.console_print_ex(window, w/2, divide+4, lt.BKGND_NONE, lt.CENTER, text)
-        elif part == "chest":
-            lt.console_print_ex(window, w/2, divide+9, lt.BKGND_NONE, lt.CENTER, text)
-        elif part == " tail":
-            lt.console_print_ex(window, w/2, divide+17, lt.BKGND_NONE, lt.CENTER, text)
-        elif part == "left arm":
-            lt.console_print(window, 4, divide+7, text)
-        elif part == "left wing":
-            lt.console_print(window, 4, divide+11, text)
-        elif part == "left leg":
-            lt.console_print(window, 4, divide+15, text)
-        elif part == "right arm":
-            lt.console_print_ex(window, w-5, divide+7, lt.BKGND_NONE, lt.RIGHT, text)
-        elif part == "right wing":
-            lt.console_print_ex(window, w-5, divide+11, lt.BKGND_NONE, lt.RIGHT, text)
-        elif part == "right leg":
-            lt.console_print_ex(window, w-5, divide+15, lt.BKGND_NONE, lt.RIGHT, text)
-
-    # And flush.
-    lt.console_blit(window, 0, 0, 0, 0, 0, (MAP_WIDTH+2)/4, (MAP_HEIGHT+2)/4, 1, 0.8)
-    lt.console_flush()
-
-    # Inventory controls.
-    while True:
-        key = lt.console_wait_for_keypress(True)
-        if key.vk == lt.KEY_ESCAPE:
-            lt.console_delete(window)
-            render_all()
-            return "no turn"
-
-
 """
 General Functions
 """
@@ -334,42 +261,6 @@ def injury_level(hp):
     elif 0 >= hp:
         return levels[6]
 
-
-def menu(header, options, width):
-    if len(options) > 26:
-        raise ValueError('Cannot have a menu with more than 26 options.')
-    elif len(options) == 0:
-        raise ValueError('Attempted menu with no options.')
-
-    header_height = lt.console_get_height_rect(area.con, 0, 0, width, MAP_HEIGHT, header)
-    if header == '':
-        header_height = 0
-    height = len(options) + header_height
-
-    window = lt.console_new(width, height)
-    lt.console_set_default_foreground(window, lt.white)
-    lt.console_print_rect_ex(window, 0, 0, width, height, lt.BKGND_NONE, lt.LEFT, header)
-
-    y = header_height
-    code = ord('a')
-    for option in options:
-        text = '(' + chr(code) + ') ' + option
-        lt.console_print_ex(window, 0, y, lt.BKGND_NONE, lt.LEFT, text)
-        y += 1
-        code += 1
-
-    x = MAP_WIDTH - width - 2
-    y = MAP_HEIGHT - height - 2
-    lt.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 0.7)
-    lt.console_flush()
-
-    while True:
-        key = lt.console_wait_for_keypress(lt.KEY_PRESSED)
-        if key.vk == lt.KEY_ESCAPE:
-            return 'exit'
-        index = key.c - ord('a')
-        if 0 <= index < len(options):
-            return index
 
 """
 Map Functions
@@ -582,35 +473,17 @@ def main():
 
 
 def main_menu():
-    while not lt.console_is_window_closed():
-        background = lt.image_load('data/gfx/main-menu-silhouette.png')
-        lt.image_invert(background)
-        lt.image_scale(background, int(SCREEN_WIDTH*2.5), int(SCREEN_WIDTH*2.5))
-        lt.image_blit_2x(background, 0, -7, -25)
-        lt.console_set_default_foreground(0, lt.white)
-        lt.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2 - 7, lt.BKGND_NONE, lt.CENTER, 'Drake')
+    background = lt.image_load('data/gfx/main-menu-silhouette.png')
+    lt.image_invert(background)
+    lt.image_scale(background, int(SCREEN_WIDTH*2.5), int(SCREEN_WIDTH*2.5))
+    lt.image_blit_2x(background, 0, -7, -25)
+    lt.console_set_default_foreground(0, lt.white)
+    lt.console_print_ex(0, SCREEN_WIDTH/2, SCREEN_HEIGHT/2 - 7, lt.BKGND_NONE, lt.CENTER, 'Drake')
 
-        # Options
-        y = 1
-        x = 10
-        lt.console_set_default_background(0, lt.black)
-        lt.console_print_frame(0, SCREEN_WIDTH/2 - x-1, SCREEN_HEIGHT/2 - y - 1, 22, 10, True, lt.BKGND_MULTIPLY)
-        lt.console_set_default_foreground(0, lt.white)
-        lt.console_print_frame(0, SCREEN_WIDTH/2 - x-1, SCREEN_HEIGHT/2 - y - 1, 22, 10, False)
-        lt.console_print_ex(0, SCREEN_WIDTH/2 - x, SCREEN_HEIGHT/2 + y, lt.BKGND_NONE, lt.LEFT, '(N)ew Game')
-        if not saved_game:
-            lt.console_set_default_foreground(0, lt.gray)
-        lt.console_print_ex(0, SCREEN_WIDTH/2 - x, SCREEN_HEIGHT/2 + y + 1, lt.BKGND_NONE, lt.LEFT, '(L)oad Game')
-        lt.console_set_default_foreground(0, lt.white)
-        lt.console_print_ex(0, SCREEN_WIDTH/2 - x, SCREEN_HEIGHT/2 + y + 2, lt.BKGND_NONE, lt.LEFT, '(O)ptions')
-        lt.console_flush()
-
-        key = lt.console_wait_for_keypress(lt.KEY_PRESSED)
-        if key.vk == lt.KEY_ESCAPE:
-            break
-        elif key.c == ord('n') or key.c == ord('N'):
-            new_game()
-            main()
+    action = menus.main_menu(SCREEN_WIDTH, SCREEN_HEIGHT, saved_game)
+    if action == 'new game':
+        new_game()
+        main()
 
 if ro:
     lt.console_set_custom_font(FONT, lt.FONT_TYPE_GRAYSCALE | lt.FONT_LAYOUT_ASCII_INROW)

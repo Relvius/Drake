@@ -21,22 +21,42 @@ class Animal(object):
 class Player(Animal):
     def __init__(self):
         super(Player, self).__init__(['dragon', 'error'])
-        self.body.add_limb("legarm", 5, 5, 5, 'right')
-        self.body.add_limb("legarm", 5, 5, 5, 'left')
-        self.body.add_limb("wing", 5, 5, 5, 'right')
-        self.body.add_limb("wing", 5, 5, 5, 'left')
-        self.body.add_limb("leg", 5, 5, 5, 'right')
-        self.body.add_limb("leg", 5, 5, 5, 'left')
-        self.body.add_limb("tail", 5, 5, 5, '')
-        self.body.add_head(10, 5, 5, 5, 5)
-        self.body.add_chest(10, 5, 5, 5)
-        self.body.head.holds = True  # Dragons can hold things with their mouths. :>
+
+        for side in ('left', 'right'):
+            for part in ('legarm', 'wing', 'leg'):
+                hp = 5
+                str = 5
+                dex = 5
+                self.body.add_limb(part, hp, str, dex, side)
+
+        # Tail
+        hp = 5
+        str = 5
+        dex = 5
+        self.body.add_limb("tail", hp, str, dex, '')
+
+        # Head
+        hp = 5
+        str = 5
+        dex = 5
+        int = 5
+        per = 5
+        self.body.add_head(hp, str, dex, int, per)
+        self.body.head.holds = True     # Dragons can hold things with their mouths. :>
+
+        # Chest
+        hp = 5
+        str = 5
+        dex = 5
+        end = 5
+        self.body.add_chest(hp, str, dex, end)
 
 
 
 """
 Body Parts
 """
+
 
 class Body:
     def __init__(self, name):
@@ -70,7 +90,7 @@ class Part(object):
         self.max_hp = hp
         self.str = str
         self.dex = dex
-        self.name = "you shouldn't see this"
+        self.name = "error"
         self.holds = False
 
     def health(self):
